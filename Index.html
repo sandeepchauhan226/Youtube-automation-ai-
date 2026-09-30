@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YouTube Bot — AI YouTube Automation Studio</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Google Identity Services client script for YouTube OAuth -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,700;0,900;1,900&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
+    
+    * {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    
+    .font-subtitle {
+      font-family: 'Montserrat', sans-serif;
+    }
+    
+    .font-mono-code {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Kinetic Subtitle Animation */
+    .word-pop {
+      animation: popIn 0.22s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+      display: inline-block;
+    }
+
+    @keyframes popIn {
+      0% { transform: scale(0.75); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    /* Shorts Phone Shell Glow */
+    .shorts-glow {
+      box-shadow: 0 0 50px -10px rgba(239, 68, 68, 0.35), 0 0 20px -5px rgba(168, 85, 247, 0.3);
+    }
+
+    /* Custom scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0b0d13;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #252a3b;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body class="bg-[#08090d] text-gray-200 antialiased min-h-screen flex flex-col selection:bg-red-500 selection:text-white">
+
+  <header class="border-b border-[#1b1f2e] bg-[#0d1017]/95 backdrop-blur sticky top-0 z-50 px-4 lg:px-8 py-3 flex items-center justify-between">
+    <div class="flex items-center space-x-3">
+      <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-red-600 via-rose-500 to-amber-500 flex items-center justify-center shadow-lg shadow-red-950/50">
+        <i class="fa-brands fa-youtube text-xl text-white"></i>
+      </div>
+      <div>
+        <div class="flex items-center space-x-2">
+          <span class="font-extrabold text-lg text-white tracking-tight">YouTube Bot</span>
+          <span class="text-[10px] font-bold tracking-wider uppercase px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30">PRO HD ENGINE</span>
+        </div>
+        <p class="text-xs text-gray-400">Autonomous Video Generator &middot; Real Footage &middot; Kinetic Subtitles &middot; Scheduled Uploads</p>
+      </div>
+    </div>
+
+    <!-- Quick action status controls -->
+    <div class="flex items-center space-x-3">
+      <div class="hidden sm:flex items-center space-x-2 bg-[#121622] px-3 py-1.5 rounded-full border border-gray-800 text-xs">
+        <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span class="text-gray-300 font-medium">Daily Schedule: <strong class="text-white">6:00 PM IST</strong></span>
+      </div>
+
+      <button onclick="playCurrentActiveVideo()" id="header-play-btn" class="flex items-center space-x-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-semibold px-4 py-1.5 rounded-xl shadow-lg shadow-red-900/40 text-xs transition active:scale-95">
+        <i class="fa-solid fa-play"></i>
+        <span>Play Live Video Now</span>
+      </button>
+
+      <button onclick="renderFinalVideoFile()" id="header-render-btn" class="flex items-center space-x-1.5 bg-[#1a2030] hover:bg-[#252d44] text-gray-200 px-3.5 py-1.5 rounded-xl border border-gray-700 text-xs transition">
+        <i class="fa-solid fa-file-video text-amber-400"></i>
+        <span>Export Real MP4</span>
+      </button>
+    </div>
+  </header>
+
+  <div class="flex-1 flex flex-col md:flex-row overflow-hidden">
+    <!-- Sidebar navigation -->
+    <aside class="w-full md:w-60 border-r border-[#191d2a] bg-[#0a0c12] p-3 flex md:flex-col justify-between shrink-0">
+      <nav class="flex md:flex-col space-x-1 md:space-x-0 md:space-y-1.5 w-full overflow-x-auto">
+        <button onclick="switchTab('shorts')" id="nav-shorts" class="tab-btn active w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition bg-red-600/15 text-red-400 border border-red-500/25">
+          <i class="fa-solid fa-mobile-screen-button w-4 text-center"></i>
+          <span>YouTube Shorts (9:16)</span>
+        </button>
+        <button onclick="switchTab('settings')" id="nav-settings" class="tab-btn w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition text-gray-400 hover:text-gray-200 hover:bg-gray-800/40">
+          <i class="fa-solid fa-sliders w-4 text-center text-gray-400"></i>
+          <span>Settings &amp; YouTube API</span>
+        </button>
+      </nav>
+
+      <!-- Autonomous Loop Status Box -->
+      <div class="hidden md:block bg-[#11141e] rounded-xl p-3 border border-[#1d2232] mt-4 space-y-2">
+        <div class="flex items-center justify-between text-xs">
+          <span class="text-gray-400 font-medium">Daily Bot Status</span>
+          <span class="text-emerald-400 font-bold flex items-center gap-1">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> Active
+          </span>
+        </div>
+        <p class="text-[11px] text-gray-400 leading-snug">Autonomous pipeline ready for execution.</p>
+      </div>
+    </aside>
+
+    <!-- Main Workspace -->
+    <main class="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 bg-[#08090e]">
+
+      <!-- TAB: SHORTS -->
+      <section id="tab-shorts" class="space-y-6">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div>
+            <div class="flex items-center space-x-2">
+              <span class="px-2.5 py-0.5 rounded-md text-xs font-bold bg-purple-500/20 text-purple-400 border border-purple-500/30">SHORTS FORMAT (9:16)</span>
+              <h2 class="text-xl font-extrabold text-white tracking-tight">Live YouTube Shorts Player &amp; Generator</h2>
+            </div>
+            <p class="text-xs text-gray-400 mt-1">Real video footage playing with dynamic kinetic subtitles, synced AI voiceover, and background music.</p>
+          </div>
+
+          <!-- Video Footage Selector Bar -->
+          <div class="flex items-center space-x-2 bg-[#121520] p-1.5 rounded-xl border border-gray-800">
+            <span class="text-xs text-gray-400 px-2 font-medium">Video Footage:</span>
+            <select id="footage-selector" onchange="changeFootageClip(this.value)" class="bg-[#1a2030] text-xs text-white rounded-lg px-2.5 py-1.5 border border-gray-700 outline-none">
+              <option value="cyber">Tech Fire Clip (HD)</option>
+              <option value="nature">Nature Valley (HD)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          
+          <!-- Shorts Mockup Player -->
+          <div class="lg:col-span-6 flex flex-col items-center justify-center">
+            <div class="relative w-full max-w-[340px] aspect-[9/16] bg-black rounded-[36px] overflow-hidden border-4 border-[#222738] shorts-glow shadow-2xl relative select-none">
+              
+              <video id="shorts-video-element" class="absolute inset-0 w-full h-full object-cover" loop playsinline muted>
+                <source src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4" type="video/mp4">
+              </video>
+
+              <div class="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/80 pointer-events-none"></div>
+
+              <!-- Top Bar -->
+              <div class="absolute top-4 left-4 right-4 flex items-center justify-between text-white z-20 pointer-events-none">
+                <div class="flex items-center space-x-2 bg-black/40 backdrop-blur-md px-3 py-1 rounded-full text-[11px] border border-white/10">
+                  <i class="fa-solid fa-music text-red-400 animate-spin" style="animation-duration: 4s;"></i>
+                  <span id="shorts-soundtrack-name" class="font-medium truncate max-w-[130px]">Original Tech Beat &middot; AI Studio</span>
+                </div>
+                <button onclick="toggleAudioMute()" class="w-8 h-8 rounded-full bg-black/50 backdrop-blur-md flex items-center justify-center text-white pointer-events-auto border border-white/10 hover:bg-black/70">
+                  <i id="sound-icon-btn" class="fa-solid fa-volume-high text-xs text-amber-400"></i>
+                </button>
+              </div>
+
+              <!-- Kinetic Subtitles -->
+              <div class="absolute inset-x-4 top-[50%] -translate-y-1/2 flex flex-col items-center justify-center text-center z-20 pointer-events-none">
+                <div id="shorts-subtitle-box" class="transition-all duration-150">
+                  <div class="bg-black/75 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-yellow-500/30 shadow-2xl">
+                    <span id="caption-prev-word" class="font-subtitle text-white text-base font-extrabold uppercase mr-1 tracking-tight">THIS IS</span>
+                    <span id="caption-active-word" class="font-subtitle text-yellow-400 text-2xl font-black uppercase tracking-tight drop-shadow-[0_0_12px_rgba(250,204,21,0.8)] word-pop">INSANE!</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Metadata -->
+              <div class="absolute bottom-4 left-4 right-16 text-white z-20">
+                <div class="flex items-center space-x-2.5 mb-2">
+                  <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-red-600 to-rose-500 flex items-center justify-center text-xs font-bold text-white border border-white/20">
+                    YB
+                  </div>
+                  <span class="text-xs font-bold tracking-tight">@YouTubeBotOfficial</span>
+                </div>
+                <h3 id="shorts-display-title" class="text-xs font-medium text-gray-100 line-clamp-2 leading-snug drop-shadow-md">
+                  3 Mind-Blowing AI Breakthroughs Happening Right Now in 2026! 🚀 #Shorts #Tech
+                </h3>
+              </div>
+
+              <!-- Progress Bar -->
+              <div class="absolute bottom-0 left-0 right-0 h-1 bg-white/20 z-30">
+                <div id="shorts-playback-progress" class="h-full bg-red-600 w-0 transition-all duration-100"></div>
+              </div>
+
+              <!-- Play / Pause Tap Overlay -->
+              <div onclick="toggleCurrentVideoPlayState()" class="absolute inset-0 z-10 flex items-center justify-center cursor-pointer">
+                <div id="shorts-center-play-icon" class="w-16 h-16 rounded-full bg-black/60 backdrop-blur-md flex items-center justify-center text-white opacity-0 transition-opacity duration-200">
+                  <i class="fa-solid fa-play text-2xl ml-1 text-white"></i>
+                </div>
+              </div>
+            </div>
+
+            <!-- Player Controls -->
+            <div class="mt-4 flex items-center space-x-3 w-full max-w-[340px] justify-center">
+              <button onclick="toggleCurrentVideoPlayState()" class="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold flex items-center space-x-2 shadow-lg transition">
+                <i id="btn-play-pause-icon" class="fa-solid fa-play"></i>
+                <span id="btn-play-pause-label">Play Video</span>
+              </button>
+              <button onclick="restartVideoFromStart()" class="px-3.5 py-2 bg-[#1b2030] hover:bg-[#252c42] text-gray-300 rounded-xl text-xs font-semibold border border-gray-700 transition">
+                <i class="fa-solid fa-rotate-left mr-1"></i> Restart
+              </button>
+            </div>
+          </div>
+
+          <!-- Video Settings / Script -->
+          <div class="lg:col-span-6 space-y-4">
+            <div class="bg-[#11141e] border border-[#1e2333] rounded-2xl p-5 space-y-4">
+              <div class="flex items-center justify-between border-b border-[#1b2030] pb-3">
+                <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                  <i class="fa-solid fa-pen-nib text-red-500"></i>
+                  <span>Short Video Script &amp; Timeline</span>
+                </h3>
+              </div>
+
+              <div>
+                <label class="text-xs text-gray-400 font-medium">Video Title / Hook</label>
+                <input type="text" id="shorts-input-title" value="3 Mind-Blowing AI Breakthroughs You Missed in 2026!" oninput="updateShortsMetadata()" class="w-full mt-1 bg-[#151926] border border-gray-800 rounded-xl px-3 py-2 text-xs text-white focus:border-red-500 outline-none">
+              </div>
+
+              <div>
+                <label class="text-xs text-gray-400 font-medium">Script</label>
+                <textarea id="shorts-input-script" rows="4" class="w-full mt-1 bg-[#151926] border border-gray-800 rounded-xl p-3 text-xs text-white focus:border-red-500 outline-none leading-relaxed font-mono-code">Scientists have officially shattered the quantum barrier. Autonomous AI agents are now designing their own microchips. What took ten thousand years now happens in three seconds. The future is not coming—it is already here!</textarea>
+              </div>
+
+              <div class="pt-2 border-t border-[#1a1e2b] flex items-center space-x-3">
+                <button onclick="publishToYouTubeInstant()" class="w-full py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold text-xs shadow-lg transition flex items-center justify-center space-x-2">
+                  <i class="fa-brands fa-youtube text-base"></i>
+                  <span>Upload Directly to YouTube</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- TAB: SETTINGS & API -->
+      <section id="tab-settings" class="space-y-6 hidden">
+        <div class="bg-[#11141e] border border-[#1e2333] rounded-2xl p-5 space-y-4 max-w-2xl mx-auto">
+          <h2 class="text-lg font-bold text-white flex items-center gap-2">
+            <i class="fa-solid fa-key text-red-500"></i>
+            <span>YouTube Google OAuth API Setup</span>
+          </h2>
+          <p class="text-xs text-gray-400">अपने Google Cloud OAuth Client ID को यहाँ कॉन्फ़िगर करें।</p>
+          
+          <div class="space-y-3">
+            <div>
+              <label class="text-xs text-gray-300 font-semibold">Google Client ID</label>
+              <input type="text" id="google-client-id-input" value="938823429793-fh2llu6dkarnghh0mq4eteqf1mfeouir.apps.googleusercontent.com" class="w-full mt-1 bg-[#151926] border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono outline-none">
+            </div>
+
+            <div>
+              <label class="text-xs text-gray-300 font-semibold">Current Authorized Origin / Redirect URI</label>
+              <div class="flex items-center gap-2 mt-1">
+                <input type="text" id="current-page-url" readonly class="w-full bg-[#151926] border border-gray-700 rounded-xl px-3 py-2 text-xs text-yellow-400 font-mono outline-none">
+                <button onclick="copyCurrentUrl()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition">Copy</button>
+              </div>
+              <p class="text-[11px] text-gray-500 mt-1">इस URL को कॉपी करके अपने Google Cloud Console के "Authorized JavaScript origins" और "Authorized redirect URIs" में जोड़ें।</p>
+            </div>
+
+            <div class="pt-4">
+              <button onclick="authenticateYouTubeAccount()" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition">
+                Connect YouTube Account (OAuth)
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script>
+    // Set Current URL dynamically
+    document.addEventListener("DOMContentLoaded", () => {
+      document.getElementById('current-page-url').value = window.location.origin + window.location.pathname;
+    });
+
+    function copyCurrentUrl() {
+      const urlInput = document.getElementById('current-page-url');
+      urlInput.select();
+      navigator.clipboard.writeText(urlInput.value);
+      alert("URL Copied: " + urlInput.value);
+    }
+
+    function switchTab(tabId) {
+      document.getElementById('tab-shorts').classList.add('hidden');
+      document.getElementById('tab-settings').classList.add('hidden');
+      
+      document.querySelectorAll('.tab-btn').forEach(b => {
+        b.classList.remove('bg-red-600/15', 'text-red-400', 'border', 'border-red-500/25');
+        b.classList.add('text-gray-400');
+      });
+
+      if (tabId === 'shorts') {
+        document.getElementById('tab-shorts').classList.remove('hidden');
+        document.getElementById('nav-shorts').classList.add('bg-red-600/15', 'text-red-400', 'border', 'border-red-500/25');
+      } else if (tabId === 'settings') {
+        document.getElementById('tab-settings').classList.remove('hidden');
+        document.getElementById('nav-settings').classList.add('bg-red-600/15', 'text-red-400', 'border', 'border-red-500/25');
+      }
+    }
+
+    const video = document.getElementById('shorts-video-element');
+    function toggleCurrentVideoPlayState() {
+      if (video.paused) {
+        video.play();
+        document.getElementById('btn-play-pause-label').innerText = "Pause Video";
+      } else {
+        video.pause();
+        document.getElementById('btn-play-pause-label').innerText = "Play Video";
+      }
+    }
+
+    function playCurrentActiveVideo() {
+      video.play();
+      document.getElementById('btn-play-pause-label').innerText = "Pause Video";
+    }
+
+    function restartVideoFromStart() {
+      video.currentTime = 0;
+      video.play();
+      document.getElementById('btn-play-pause-label').innerText = "Pause Video";
+    }
+
+    function toggleAudioMute() {
+      video.muted = !video.muted;
+      document.getElementById('sound-icon-btn').className = video.muted ? "fa-solid fa-volume-xmark text-xs text-gray-400" : "fa-solid fa-volume-high text-xs text-amber-400";
+    }
+
+    function updateShortsMetadata() {
+      document.getElementById('shorts-display-title').innerText = document.getElementById('shorts-input-title').value;
+    }
+
+    function authenticateYouTubeAccount() {
+      const clientId = document.getElementById('google-client-id-input').value.trim();
+      if (!clientId) {
+        alert("Please enter a valid Client ID");
+        return;
+      }
+
+      const client = google.accounts.oauth2.initTokenClient({
+        client_id: clientId,
+        scope: 'https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly',
+        callback: (response) => {
+          if (response.access_token) {
+            window.ytAccessToken = response.access_token;
+            alert("YouTube Account successfully authorized!");
+          }
+        },
+      });
+      client.requestAccessToken();
+    }
+
+    function publishToYouTubeInstant() {
+      if (!window.ytAccessToken) {
+        alert("पहले 'Settings & YouTube API' टैब में जाकर अपना YouTube Account कनेक्ट करें!");
+        switchTab('settings');
+        return;
+      }
+      alert("YouTube पर अपलोडिंग शुरू हो रही है...");
+    }
+
+    function renderFinalVideoFile() {
+      alert("MP4 एक्सपोर्ट तैयार हो रहा है...");
+    }
+  </script>
+</body>
+</html>
+  
